@@ -2,11 +2,6 @@
 #include <math.h>
 #include <stdint.h>
 
-typedef uint32_t Animation;
-const Animation IDLE = 1 << 1;
-const Animation SITE = 1 << 2;
-const Animation LINK = 1 << 3;
-
 typedef struct
 {
     float x, y;
@@ -26,23 +21,11 @@ typedef struct
     int numLinks;
     GList *links;
 
+    float timeDec;
     int numVisitors;
     int numVisits;
 } Site;
 
-typedef struct
-{
-    Animation anim;
-    Color color;
-    float radius;
-    float t0, t1;
-
-    Site *lastSite;
-    Site *site;
-    float siteTime;
-} Visitor;
-
-GList *visitors;
 GList *sites;
 int numSites = 0;
 int totalVisits = 1;
@@ -59,29 +42,8 @@ GRand *grand;
 float g_time;
 float g_dt;
 
-float linkTime = 0.5;
-float roundTime = 2;
+float lambda = 1;
 float p = 0.2;
-
-void killVisitor(GList *vl)
-{
-    g_free(vl->data);
-    visitors = g_list_delete_link(visitors, vl);
-    g_print("A visitor has died\n");
-}
-
-void killOnSite(Site *s)
-{
-    GList *cur = visitors;
-    while(cur != NULL)
-    {
-        GList *next = cur->next;
-        Visitor *v = cur->data;
-        if(v->lastSite == s || v->site == s)
-            killVisitor(cur);
-        cur = next;
-    }
-}
 
 void killLinksInSite(gpointer data, gpointer user_data)
 {
@@ -109,7 +71,6 @@ void killSite(GList *sl)
     numSites--;
     g_list_free(s->links);
     g_list_foreach(sites, killLinksInSite, s);
-    killOnSite(s);
     g_free(s);
     sites = g_list_delete_link(sites, sl);
     g_print("A site has died\n");
@@ -118,7 +79,7 @@ void killSite(GList *sl)
 
 Site *pickSite(Site *src)
 {
-    if(numSites <= 1) return sites->data;
+    if(numSites <= 1) return src;
 
     Site *s = src;
 
@@ -141,80 +102,57 @@ Site *pickSite(Site *src)
     return s;
 }
 
-void drawVisitor(gpointer data, gpointer user_data)
+float rand_exp(float lambda)
 {
-    Visitor *v = data;
+    return -log(g_rand_double(grand))/lambda;
+}
+
+void updateTime(Site *s)
+{
+    if(s->numVisitors > 0)
+        s->timeDec = g_time + rand_exp(lambda*s->numVisitors);
+}
+
+void drawSites(gpointer data, gpointer user_data)
+{
+    Site *s = data;
     cairo_t *cr = user_data;
+    Color col = s->color;
 
-    Animation anim = v->anim;
-
-    Pos2D pos;
-    Color col;
-
-    if(anim & SITE)
+    float radius = s->radius;
+    
+    if(selSite)
+    if(s == selSite->data)
     {
-        float angle = 2*M_PI*g_time/roundTime - v->t1;
-        Site *s = v->lastSite;
-        pos = (Pos2D){s->pos.x + s->radius*cos(angle), s->pos.y + s->radius*sin(angle)};
-        col = v->color;
-
-        if(v->site == NULL)
-        {
-            v->site = pickSite(v->lastSite); 
-        }
-        else
-        if(v->siteTime - g_time < 0)
-        {
-            Pos2D ds = (Pos2D){v->site->pos.x - s->pos.x, v->site->pos.y - s->pos.y};
-            float angle2 = atan2(ds.y, ds.x);
-
-            float diff = (angle-angle2)/(2*M_PI);
-            
-            if(fabs(diff - round(diff)) <= g_dt/roundTime)
-            {
-                anim &= ~SITE;
-                anim |= LINK;
-                v->t1 = g_time+linkTime;
-            }
-        }
+        col = (Color){0, 0, 1};
     }
 
-    if(anim & LINK)
+    if(s->numVisitors > 0)
     {
-        Site *s = v->lastSite;
-        float t = v->t1 - g_time;
-        Pos2D ds = (Pos2D){v->site->pos.x - s->pos.x, v->site->pos.y - s->pos.y};
-        float len = sqrt(ds.x*ds.x + ds.y*ds.y);
-        Pos2D n = (Pos2D){ds.x/len, ds.y/len};
-        Pos2D src = (Pos2D){s->pos.x + s->radius*n.x, s->pos.y + s->radius*n.y};
-        Pos2D dst = (Pos2D){v->site->pos.x - v->site->radius*n.x, v->site->pos.y - v->site->radius*n.y};
-        pos = (Pos2D){dst.x + (src.x-dst.x)*t/linkTime, dst.y + (src.y-dst.y)*t/linkTime};
-        col = v->color;
-
-        if(t < 0)
+        if(g_time > s->timeDec)
         {
-            anim &= ~LINK;
-            anim |= SITE;
-            
-            float angle2 = atan2(ds.y, ds.x);
-            v->t1 = 2*M_PI*g_time/roundTime-(angle2 - M_PI);
-
-            v->siteTime = g_time + 1;
-            v->lastSite->numVisitors--;
-            v->lastSite = v->site;
-            v->lastSite->numVisits++;
-            v->lastSite->numVisitors++;
-            totalVisits++;
-            v->site = pickSite(v->lastSite);
+            s->numVisitors--;
+            updateTime(s);
+            Site *n = pickSite(s);
+            n->numVisitors++;
+            updateTime(n);
         }
     }
 
     cairo_new_sub_path(cr);
-    cairo_arc(cr, pos.x, pos.y, v->radius, 0, 2*M_PI);
+    cairo_arc(cr, s->pos.x, s->pos.y, radius, 0, 2*M_PI);
     cairo_set_source_rgb(cr, col.r, col.g, col.b);
-    cairo_fill(cr);
+    cairo_fill_preserve(cr);
+    cairo_set_line_width(cr, 4);
+    cairo_set_source_rgb(cr, 1, 0.5, 0.1);
+    cairo_stroke(cr);
 
-    v->anim = anim;
+    cairo_select_font_face(cr, "Sans", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
+    cairo_set_font_size(cr, radius);
+    char buffer[16];
+    sprintf(buffer, "%d", s->numVisitors);
+    cairo_move_to(cr, s->pos.x-radius/2, s->pos.y+radius/4);
+    cairo_show_text(cr, buffer);
 }
 
 typedef struct
@@ -222,6 +160,7 @@ typedef struct
     Site *src;
     cairo_t *cr;
 } drawLinkData;
+
 
 void drawLink(gpointer data, gpointer user_data)
 {
@@ -234,30 +173,6 @@ void drawLink(gpointer data, gpointer user_data)
     cairo_move_to(cr, src->pos.x, src->pos.y);
     cairo_line_to(cr, dst->pos.x, dst->pos.y);
     cairo_set_source_rgb(cr, 1, 0, 1);
-    cairo_stroke(cr);
-}
-
-void drawSites(gpointer data, gpointer user_data)
-{
-    Site *s = data;
-    cairo_t *cr = user_data;
-    Color col = s->color;
-
-    float radius = s->radius;
-    //radius += (((float)s->numVisits)/totalVisits - 0.5) * 5;
-
-    if(selSite)
-    if(s == selSite->data)
-    {
-        col = (Color){0, 0, 1};
-    }
-
-    cairo_new_sub_path(cr);
-    cairo_arc(cr, s->pos.x, s->pos.y, radius, 0, 2*M_PI);
-    cairo_set_source_rgb(cr, col.r, col.g, col.b);
-    cairo_fill_preserve(cr);
-    cairo_set_line_width(cr, 4);
-    cairo_set_source_rgb(cr, 1, 0.5, 0.1);
     cairo_stroke(cr);
 }
 
@@ -304,7 +219,6 @@ gboolean canvasDraw(GtkWidget *widget, cairo_t *cr, gpointer user_data)
 {
     g_list_foreach(sites, drawSiteLinks, cr);
     g_list_foreach(sites, drawSites, cr);
-    g_list_foreach(visitors, drawVisitor, cr);
     return TRUE;
 }
 
@@ -371,18 +285,9 @@ gboolean keyPress(GtkWidget *widget, GdkEventKey *event, gpointer user_data)
         case 'v':
             {
                 if(!selSite) break;
-
-                Visitor *v = (Visitor*)g_malloc(sizeof(Visitor));
-                v->anim = SITE;
-                v->color = (Color){1, 0, 0};
-                v->radius = 4;
-                v->t0 = 0;
-                v->t1 = g_time;
-                v->lastSite = selSite->data;
-                v->site = pickSite(selSite->data);
-                v->siteTime = g_time+1;
-
-                visitors = g_list_prepend(visitors, v);
+                Site* s = selSite->data;
+                s->numVisitors++;
+                updateTime(s);
             }
             break;
         case 'm':
@@ -401,7 +306,6 @@ gboolean keyPress(GtkWidget *widget, GdkEventKey *event, gpointer user_data)
 
 int main(int argc, char *argv[])
 {
-    visitors = NULL;
     sites = NULL;
 
     g_time = 0;
