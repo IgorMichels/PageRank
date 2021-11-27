@@ -8,6 +8,8 @@
 \usepackage{tcolorbox}
 \usepackage{amsmath}
 \usepackage{tikz}
+\usepackage{wrapfig}
+\usepackage{float}
 
 \tikzstyle{node} = [circle, draw = blue!50, fill = blue!20, thick, inner sep = 0pt, minimum size = 6mm]
 
@@ -51,51 +53,83 @@ Indo um pouco na contramão de algumas outras estratégias, o PageRank visa calc
     Um site que recebe apenas um link, mas do G1, deve ser mais relevante que um site que recebe apenas um link de um site pessoal.
 \end{mybox}
 
-\begin{figure}
-    \centering
-    \includegraphics[scale = 0.5]{PageRanks-Example.png}
-    \caption{Páginas e suas relevâncias. Note que, mesmo com apenas um ``voto'', a página C tem uma alta relevância. Exemplo de \cite{wiki}.}
-    \label{wiki_example}
-\end{figure}
+% \begin{figure}
+%     \centering
+%     \includegraphics[scale = 0.5]{PageRanks-Example.png}
+%     \caption{Páginas e suas relevâncias. Note que, mesmo com apenas um ``voto'', a página C tem uma alta relevância. Exemplo de \cite{wiki}.}
+%     \label{wiki_example}
+% \end{figure}
 
 \subsection*{Conexão com as Cadeias de Markov}
 
-Intuitivamente, podemos pensar no processo de um internauta ficar navegando na internet e trocar de sites por meio de links presentes no próprio site, com mesma probabilidade para cada link. Dessa forma, se um site $S$ tem link para $n$ diferentes sites ($T_1$, $T_2$, $\dots$ e $T_n$), a probabilidade do internauta sair do site $S$ para os sites $T_i, i \in \{1, 2, \dots, n\}$ é igual a $\frac{1}{n}$ e é nula para qualquer outro site.
+Intuitivamente, podemos pensar no processo de um internauta ficar navegando na internet e trocar de sites por meio de links presentes no próprio site, com mesma probabilidade para cada link. Dessa forma, se um site $S$ tem link para $n$ diferentes sites ($T_1$, $T_2$, $\dots$ e $T_n$), a probabilidade do internauta sair do site $S$ para os sites $T_i, i \in \{1, 2, \dots, n\}$ é igual a $\frac{1}{n}$ e é nula para qualquer outro site. Note que temos uma modelagem concisa que representa a rede de modo simples resta, então, definir uma métrica para representar a relevância de um site.
 
-Note que temos uma modelagem concisa que representa a rede de modo simples resta, então, definir uma métrica para representar a relevância de um site. Pensando em Cadeias de Markov, com sua evolução temporal, podemos pensar que uma boa métrica seja dada pela proporção do tempo que o internauta aleatório passa em cada site, ou seja, é maior para sites mais recorrentes e menor para sites menos visitados. Note que essa definição é coerente com a ideia de que sites mais relevantes tenham votos mais significativos.
+Pensando em Cadeias de Markov, e em sua evolução temporal, podemos pensar que uma boa métrica seja dada pela proporção do tempo que o internauta aleatório passa em cada site ao realizar um passeio aleatório pelos mesmos. Ou seja, vamos dizer que a relevância é maior para sites mais recorrentes e menor para os menos visitados. Dessa forma, podemos ver que sites que são muito linkados tendem a aparecer mais vezes no passeio. Consequentemente, os que são linkados pelos mais recorrentes também tendem a aparecer mais vezes. Já os sites pouco linkados e com links de sites menos recorrentes tendem a aparecer por menos tempo no passeio.
 
-\subsection*{Tratando as entradas nulas e implementando}
+Note que essas propriedades são justamente as desejáveis para nosso ranking, ou seja, estamos com uma métrica em que os sites mais bem colocados tenham votos com peso maior que os piores colocados. Por fim, temos que a relevância pode ser calculada por meio do vetor estacionário da Cadeia de Markov definida pela rede.
 
-\begin{tikzpicture}
-    \node (A) at (0, 1.7) [node] {};
-    \node (B) at (-1, 0) [node] {};
-    \node (C) at (1, 0) [node] {};
-    \draw [->] (A) -- (B);
-    \draw [->] (B) -- (C);
-    \draw [->] (C) -- (A);
-    
-    \node (D) at (5, 1.7) [node] {};
-    \node (E) at (5, 0.85) [node] {};
-    \node (F) at (5, 0) [node] {};
-    \node (G) at (7, 0.85) [node] {};
-    \draw [->] (D) -- (G);
-    \draw [->] (E) -- (G);
-    \draw [->] (F) -- (G);
-\end{tikzpicture}
+\subsection*{Alguns problemas da modelagem}
 
-Como vimos anteriormente, podemos modelar as transições entre dois sites por meio de uma Cadeia de Markov. Porém, como sabemos, nem todos os sites recebem links de todos os outros sites (na verdade, a grande maioria nem se conecta), ou seja, nossa matriz de transição da cadeia é esparsa e pode não existir distribuição estacionária para essa cadeia. Uma forma de resolver esse problema é adicionar links fictícios entre todos os sites, mas de modo que esses links somem uma probabilidade baixa. Dessa forma, temos a seguinte matriz da cadeia
-\[M = (1 - p)\cdot A + p\cdot \dfrac{I}{n},\]
+% \begin{wrapfigure}{R}{0.3\textwidth}
+%     \centering
+%     \begin{tikzpicture}
+%         \node (A) at (0, 1.7) [node] {A};
+%         \node (B) at (-1, 0) [node] {B};
+%         \node (C) at (1, 0) [node] {C};
+%         \draw [->, line width = 0.25mm] (A) -- (B);
+%         \draw [->, line width = 0.25mm] (B) -- (C);
+%         \draw [->, line width = 0.25mm] (C) -- (A);
+%     \end{tikzpicture}
+%     \caption{Exemplo de rede cíclica.}
+%     \label{graph}
+% \end{wrapfigure}
+
+Vamos supor que uma sub-rede da nossa rede seja cíclica, como na Figura \ref{graph1}. Se executarmos o passeio aleatório definido anteriormente temos que, se um internauta cair dentro desse ciclo, em $A$, por exemplo, ele ficará seguindo o caminho $A\to B\to C\to A$ infinitamente. Dessa forma, podemos ver que, ao entrar no ciclo, o tempo que o internauta permanece em cada site desse ciclo é $\frac{1}{3}$, o que nos daria igual relevância a cada um dos três sites do ciclo e relevância zero para os demais sites da rede, o que seria problemático.
+
+Outro exemplo pode ser visto na Figura \ref{graph2}, onde temos a aparição de um nó terminal. Note que, num passeio aleatório, se um internauta acessa o site $G$, ele permanece nele infinitamente, o seja, teremos relevância $1$ para o site $G$ e zero para os demais, o que também seria um problema.
+\begin{figure}[H]
+    \centering
+    \begin{minipage}{.5\textwidth}
+        \centering
+        \begin{tikzpicture}
+            \node (A) at (0, 1.7) [node] {A};
+            \node (B) at (-1, 0) [node] {B};
+            \node (C) at (1, 0) [node] {C};
+            \draw [->, line width = 0.25mm] (A) -- (B);
+            \draw [->, line width = 0.25mm] (B) -- (C);
+            \draw [->, line width = 0.25mm] (C) -- (A);
+        \end{tikzpicture}
+        \caption{Exemplo de rede cíclica.}
+        \label{graph1}
+    \end{minipage}%
+    \begin{minipage}{.5\textwidth}
+        \centering
+        \begin{tikzpicture}
+            \node (D) at (5, 2.55) [node] {D};
+            \node (E) at (5, 0.85) [node] {E};
+            \node (F) at (5, -0.85) [node] {F};
+            \node (G) at (7, 0.85) [node] {G};
+            \draw [->, line width = 0.25mm] (D) -- (G);
+            \draw [->, line width = 0.25mm] (E) -- (G);
+            \draw [->, line width = 0.25mm] (F) -- (G);
+        \end{tikzpicture}
+        \caption{O nó G é um nó terminal.}
+        \label{graph2}
+    \end{minipage}
+\end{figure}
+
+\subsection*{Solucionando os problemas}
+
+Para driblar esses problemas podemos fazer algumas adaptações nas redes, alterando um pouco a estrutura e as probabilidades, mas visando uma maior coerência e correção desses problemas. A alteração estrutural se dará pela inserção de arestas de modo que o grafo fique completo, com todos os nós apontando para todos os outros nós. Quanto as probabilidades, fixaremos um valor $p\in (0, 1)$ e a matriz de transição dessa nova Cadeia será dada por
+\[\tilde{M} = (1 - p)\cdot M + p\cdot \dfrac{I}{n},\]
 
 \noindent onde temos
 \begin{itemize}
     \item
-        $M$: a matriz de transição da cadeia;
+        $\tilde{M}$: a matriz de transição da nova cadeia;
         
     \item
-        $p$: a probabilidade de entrar em um site aleatório;
-        
-    \item
-        $A$: a matriz de adjacências da rede;
+        $M$: a matriz de transição da cadeia original;
         
     \item
         $I$: a matriz de uns de tamanho $n\times n$ e;
@@ -103,6 +137,54 @@ Como vimos anteriormente, podemos modelar as transições entre dois sites por m
     \item
         $n$: o número de nós da rede.
 \end{itemize}
+
+Visualmente, podemos ilustrar os grafos anteriores após as alterações como na Figura \ref{graph12}. Na rede da esquerda, as arestas azuis representam as próprias arestas, enquanto as vermelhas representam grupos de arestas que se conectam a cada uma das arestas da outra parte do grafo, representada pelo no Grafo.
+\begin{figure}
+    \centering
+    \begin{tikzpicture}
+        \node (A) at (0, 1.7) [node] {A};
+        \node (B) at (-1, 0) [node] {B};
+        \node (C) at (1, 0) [node] {C};
+        \node (Graph) at (0, 3) [node] {Grafo};
+        \draw [->, line width = 0.25mm] (A) -- (B);
+        \draw [<-, dashed, blue] (A) to[out = 180, in = 180] (B);
+        \draw [->, line width = 0.25mm] (B) -- (C);
+        \draw [<-, dashed, blue] (B) to[out = -90, in = -90] (C);
+        \draw [->, line width = 0.25mm] (C) -- (A);
+        \draw [<-, dashed, blue] (C) to[out = 0, in = 0] (A);
+        \draw [->, line width = 0.25mm] (Graph) -- (A);
+        \draw [<->, dashed, red] (C) to[out = 45, in = 45] (Graph);
+        \draw [<->, dashed, red] (B) to[out = 135, in = 180] (Graph);
+        \draw [<->, dashed, red] (A) to[out = 45, in = 0] (Graph);
+    
+        \node (D) at (5, 2.55) [node] {D};
+        \node (E) at (5, 0.85) [node] {E};
+        \node (F) at (5, -0.85) [node] {F};
+        \node (G) at (7, 0.85) [node] {G};
+        \draw [->, line width = 0.25mm] (D) -- (G);
+        \draw [->, line width = 0.25mm] (E) -- (G);
+        \draw [->, line width = 0.25mm] (F) -- (G);
+        
+        \draw [<->, dashed, blue] (D) -- (E);
+        \draw [<->, dashed, blue] (E) -- (F);
+        \draw [<->, dashed, blue] (D) to[out = 180, in = 180] (F);
+        \draw [->, dashed, blue] (G) to[out = 90, in = 0] (D);
+        \draw [->, dashed, blue] (G) to[out = 157.5, in = 22.5] (E);
+        \draw [->, dashed, blue] (G) to[out = -90, in = 00] (F);
+    \end{tikzpicture}
+    \caption{Grafos anteriores após alteração descrita.}
+    \label{graph12}
+\end{figure}
+
+Uma interpretação dessa alteração é a de que o processo ocorre com o internauta, antes de sair do site, jogando uma moeda de probabilidade $p$ para sair cara. Saindo cara, o internauta vai na barra de endereços e digita o endereço de qualquer site (podendo inclusive digitar o endereço do site atual) com mesma probabilidade, acessando o site que foi digitado na barra de endereços. Já se a moeda der coroa, então o internauta entra em um dos links da página, novamente com a mesma probabilidade entre os links existentes.
+
+Podemos perceber que, com essas alterações, os problemas de ficarmos presos num ciclo ou num nó terminal acabam, pois temos uma probabilidade positiva de ir a outro nó da rede. Por fim, note também que essa alteração fez a matriz $\tilde{M}$ ser positiva o que, pelo Teorema de Perron-Frobenius, diz que essa matriz possui um estado estacionário $\pi$.
+
+% enunciar e provar o Teorema de Perron-Frobenius na seção de Cadeias de Markov
+
+
+
+
 
 \newpage
 \begin{thebibliography}{9}
