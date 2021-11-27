@@ -21,13 +21,13 @@ typedef struct
     int numLinks;
     GList *links;
 
-    float timeDec;
-    int numVisitors;
+    int numVisitors[2]; //double buffer -> pra atualizar
 } Site;
 
 GList *sites;
 int numSites = 0;
 int totalVisitors = 0;
+int cycle = 0;
 
 GList *selSite = NULL;
 char moving = 0;
@@ -41,9 +41,12 @@ GRand *grand;
 float g_time;
 float g_dt;
 
+float g_updatetime;
+
+float update = 0.01;
+
 float radius = 20;
-float lambda = 1;
-float p = 0.1;
+float p = 0.01;
 
 void killLinksInSite(gpointer data, gpointer user_data)
 {
@@ -67,7 +70,7 @@ void killSite(GList *sl)
 {
     if(sl == selSite) selSite = NULL;
     Site *s = sl->data;
-    totalVisitors -= s->numVisitors;
+    totalVisitors -= s->numVisitors[cycle];
     numSites--;
     g_list_free(s->links);
     g_list_foreach(sites, killLinksInSite, s);
@@ -101,26 +104,19 @@ Site *pickSite(Site *src)
     return s;
 }
 
-float rand_exp(float lambda)
-{
-    return -log(g_rand_double(grand))/lambda;
-}
-
-void updateTime(Site *s)
-{
-    if(s->numVisitors > 0)
-        s->timeDec = g_time + rand_exp(lambda*s->numVisitors);
-}
-
 void drawSites(gpointer data, gpointer user_data)
 {
     Site *s = data;
     cairo_t *cr = user_data;
     Color col = s->color;
 
-    float rank = ((float)s->numVisitors)/totalVisitors;
+    float rank = ((float)s->numVisitors[cycle])/totalVisitors;
     if(totalVisitors == 0) rank = 0;
     s->radius = radius + radius*rank;
+
+    col.r = rank;
+    col.g = 1-rank;
+    col.b = 0.1;
     
     if(selSite)
     if(s == selSite->data)
@@ -128,16 +124,12 @@ void drawSites(gpointer data, gpointer user_data)
         col = (Color){0, 0, 1};
     }
 
-    if(s->numVisitors > 0)
+    if(g_time >= g_updatetime)
+    while(s->numVisitors[cycle] > 0)
     {
-        if(g_time > s->timeDec)
-        {
-            s->numVisitors--;
-            updateTime(s);
-            Site *n = pickSite(s);
-            n->numVisitors++;
-            updateTime(n);
-        }
+        s->numVisitors[cycle]--;
+        Site *n = pickSite(s);
+        n->numVisitors[cycle^1]++;
     }
 
     cairo_new_sub_path(cr);
@@ -145,7 +137,7 @@ void drawSites(gpointer data, gpointer user_data)
     cairo_set_source_rgb(cr, col.r, col.g, col.b);
     cairo_fill_preserve(cr);
     cairo_set_line_width(cr, 4);
-    cairo_set_source_rgb(cr, 1, 0, 0);
+    cairo_set_source_rgb(cr, 0.5, 0.1, 0.8);
     cairo_stroke(cr);
 
     char buffer[16];    
@@ -252,13 +244,19 @@ gboolean canvasDraw(GtkWidget *widget, cairo_t *cr, gpointer user_data)
     if(selSite)
     {
         Site *s = selSite->data;
-        sprintf(buffer, "Selected visitors: %d", s->numVisitors);
+        sprintf(buffer, "Selected visitors: %d", s->numVisitors[cycle]);
         cairo_move_to(cr, 30, 60);
         cairo_show_text(cr, buffer);
     }
 
     g_list_foreach(sites, drawSiteLinks, cr);
     g_list_foreach(sites, drawSites, cr);
+
+    if(g_time > g_updatetime)
+    {
+        g_updatetime = g_time + update;
+        cycle = cycle ^ 1;
+    }
     return TRUE;
 }
 
@@ -291,7 +289,8 @@ gboolean keyPress(GtkWidget *widget, GdkEventKey *event, gpointer user_data)
                 s->radius = radius;
                 s->numLinks = 0;
                 s->links = NULL;
-                s->numVisitors = 0;
+                s->numVisitors[0] = 0;
+                s->numVisitors[1] = 0;
                 sites = g_list_prepend(sites, s);
                 numSites++;
             }
@@ -325,9 +324,16 @@ gboolean keyPress(GtkWidget *widget, GdkEventKey *event, gpointer user_data)
             {
                 if(!selSite) break;
                 Site* s = selSite->data;
-                s->numVisitors++;
+                s->numVisitors[cycle]++;
                 totalVisitors++;
-                updateTime(s);
+            }
+            break;
+        case 'c':
+            {
+                if(!selSite) break;
+                Site* s = selSite->data;
+                s->numVisitors[cycle] += 1000;
+                totalVisitors += 1000;
             }
             break;
         case 'e':
@@ -337,7 +343,8 @@ gboolean keyPress(GtkWidget *widget, GdkEventKey *event, gpointer user_data)
                 {
                     GList *next = cur->next;
                     Site *s = cur->data;
-                    s->numVisitors = 0;
+                    s->numVisitors[0] = 0;
+                    s->numVisitors[1] = 0;
                     cur = next;
                 }
                 totalVisitors = 0;
@@ -355,6 +362,7 @@ int main(int argc, char *argv[])
     sites = NULL;
 
     g_time = 0;
+    g_updatetime = update;
     g_dt = 1000.0/FPS;
 
     grand = g_rand_new();
