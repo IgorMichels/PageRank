@@ -23,12 +23,11 @@ typedef struct
 
     float timeDec;
     int numVisitors;
-    int numVisits;
 } Site;
 
 GList *sites;
 int numSites = 0;
-int totalVisits = 1;
+int totalVisitors = 0;
 
 GList *selSite = NULL;
 char moving = 0;
@@ -42,8 +41,9 @@ GRand *grand;
 float g_time;
 float g_dt;
 
+float radius = 20;
 float lambda = 1;
-float p = 0.2;
+float p = 0.1;
 
 void killLinksInSite(gpointer data, gpointer user_data)
 {
@@ -67,7 +67,7 @@ void killSite(GList *sl)
 {
     if(sl == selSite) selSite = NULL;
     Site *s = sl->data;
-    totalVisits -= s->numVisits;
+    totalVisitors -= s->numVisitors;
     numSites--;
     g_list_free(s->links);
     g_list_foreach(sites, killLinksInSite, s);
@@ -75,7 +75,6 @@ void killSite(GList *sl)
     sites = g_list_delete_link(sites, sl);
     g_print("A site has died\n");
 }
-
 
 Site *pickSite(Site *src)
 {
@@ -119,7 +118,9 @@ void drawSites(gpointer data, gpointer user_data)
     cairo_t *cr = user_data;
     Color col = s->color;
 
-    float radius = s->radius;
+    float rank = ((float)s->numVisitors)/totalVisitors;
+    if(totalVisitors == 0) rank = 0;
+    s->radius = radius + radius*rank;
     
     if(selSite)
     if(s == selSite->data)
@@ -140,18 +141,22 @@ void drawSites(gpointer data, gpointer user_data)
     }
 
     cairo_new_sub_path(cr);
-    cairo_arc(cr, s->pos.x, s->pos.y, radius, 0, 2*M_PI);
+    cairo_arc(cr, s->pos.x, s->pos.y, s->radius, 0, 2*M_PI);
     cairo_set_source_rgb(cr, col.r, col.g, col.b);
     cairo_fill_preserve(cr);
     cairo_set_line_width(cr, 4);
-    cairo_set_source_rgb(cr, 1, 0.5, 0.1);
+    cairo_set_source_rgb(cr, 1, 0, 0);
     cairo_stroke(cr);
 
-    cairo_select_font_face(cr, "Sans", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
-    cairo_set_font_size(cr, radius);
-    char buffer[16];
-    sprintf(buffer, "%d", s->numVisitors);
-    cairo_move_to(cr, s->pos.x-radius/2, s->pos.y+radius/4);
+    char buffer[16];    
+    sprintf(buffer, "%1.2f", rank);
+
+    cairo_select_font_face(cr, "Arial", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
+    cairo_set_font_size(cr, s->radius*0.75);
+    cairo_text_extents_t extents;
+    cairo_text_extents(cr, buffer, &extents);
+    cairo_move_to(cr, s->pos.x-extents.width/2.0, s->pos.y+extents.height/2.0);
+    cairo_set_source_rgb(cr, 0, 0, 0);
     cairo_show_text(cr, buffer);
 }
 
@@ -161,19 +166,34 @@ typedef struct
     cairo_t *cr;
 } drawLinkData;
 
-
 void drawLink(gpointer data, gpointer user_data)
 {
     Site *dst = (Site*)data;
     Site *src = ((drawLinkData*)user_data)->src;
     cairo_t *cr = ((drawLinkData*)user_data)->cr;
 
-    cairo_set_line_width(cr, 1);
+    Pos2D ds = (Pos2D){dst->pos.x - src->pos.x, dst->pos.y - src->pos.y};
+    float len = sqrt(ds.x*ds.x + ds.y*ds.y);
+    Pos2D n = (Pos2D){ds.x/len, ds.y/len};
+    Pos2D n2 = (Pos2D){-n.y, n.x};
+
+    Pos2D pt_src = (Pos2D){src->pos.x + src->radius*n.x, src->pos.y + src->radius*n.y};
+    Pos2D pt_dst = (Pos2D){dst->pos.x - dst->radius*n.x, dst->pos.y - dst->radius*n.y};
+
+    cairo_set_line_width(cr, 2);
     cairo_new_sub_path(cr);
-    cairo_move_to(cr, src->pos.x, src->pos.y);
-    cairo_line_to(cr, dst->pos.x, dst->pos.y);
-    cairo_set_source_rgb(cr, 1, 0, 1);
+    cairo_move_to(cr, pt_src.x, pt_src.y);
+    cairo_line_to(cr, pt_dst.x, pt_dst.y);
+    cairo_set_source_rgb(cr, 0, 0, 0);
     cairo_stroke(cr);
+
+    float s = 10;
+
+    cairo_move_to(cr, pt_dst.x, pt_dst.y);
+    cairo_line_to(cr, pt_dst.x + s*(n2.x-n.x), pt_dst.y + s*(n2.y-n.y));
+    cairo_line_to(cr, pt_dst.x + s*(-n2.x-n.x), pt_dst.y + s*(-n2.y-n.y));
+    
+    cairo_fill(cr);
 }
 
 void drawSiteLinks(gpointer data, gpointer user_data)
@@ -217,6 +237,26 @@ gboolean windowDelete(GtkWidget *widget, GdkEvent *event, gpointer user_data)
 
 gboolean canvasDraw(GtkWidget *widget, cairo_t *cr, gpointer user_data)
 {
+    cairo_set_source_rgb(cr, 0.6, 0.6, 1);
+    cairo_paint(cr);
+
+    cairo_select_font_face(cr, "Arial", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
+    cairo_set_font_size(cr, 24);
+    cairo_set_source_rgb(cr, 0, 0, 0);
+
+    char buffer[512];
+    sprintf(buffer, "Total visitors: %d", totalVisitors);
+    cairo_move_to(cr, 30, 30);
+    cairo_show_text(cr, buffer);
+
+    if(selSite)
+    {
+        Site *s = selSite->data;
+        sprintf(buffer, "Selected visitors: %d", s->numVisitors);
+        cairo_move_to(cr, 30, 60);
+        cairo_show_text(cr, buffer);
+    }
+
     g_list_foreach(sites, drawSiteLinks, cr);
     g_list_foreach(sites, drawSites, cr);
     return TRUE;
@@ -248,11 +288,10 @@ gboolean keyPress(GtkWidget *widget, GdkEventKey *event, gpointer user_data)
                 Site *s = (Site*)g_malloc(sizeof(Site));
                 s->pos = cursorPos;
                 s->color = (Color){1, 1, 1};
-                s->radius = 20;
+                s->radius = radius;
                 s->numLinks = 0;
                 s->links = NULL;
                 s->numVisitors = 0;
-                s->numVisits = 0;
                 sites = g_list_prepend(sites, s);
                 numSites++;
             }
@@ -287,18 +326,25 @@ gboolean keyPress(GtkWidget *widget, GdkEventKey *event, gpointer user_data)
                 if(!selSite) break;
                 Site* s = selSite->data;
                 s->numVisitors++;
+                totalVisitors++;
                 updateTime(s);
+            }
+            break;
+        case 'e':
+            {
+                GList *cur = sites;
+                while(cur != NULL)
+                {
+                    GList *next = cur->next;
+                    Site *s = cur->data;
+                    s->numVisitors = 0;
+                    cur = next;
+                }
+                totalVisitors = 0;
             }
             break;
         case 'm':
             moving = !moving;
-            break;
-        case 'i':
-            {
-                if(!selSite) break;
-                Site *s = selSite->data;
-                g_print("Nlinks: %d\n", s->numLinks);
-            }
             break;
     }
     return TRUE;
