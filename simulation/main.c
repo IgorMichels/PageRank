@@ -33,7 +33,7 @@ gboolean reverse;
 
 Pos2D cursorPos;
 GtkWidget *window, *canvas;
-GtkScale *p_scale, *interval_scale, *radius_scale;
+GtkSpinButton *p_scale, *interval_scale, *radius_scale;
 
 GRand *grand;
 
@@ -246,17 +246,10 @@ gboolean canvasDraw(GtkWidget *widget, cairo_t *cr, gpointer user_data)
     cairo_set_source_rgb(cr, 0, 0, 0);
 
     char buffer[512];
+
     sprintf(buffer, "Total visitors: %d", totalVisitors);
     cairo_move_to(cr, 30, 30);
     cairo_show_text(cr, buffer);
-
-    /*if(selSite)
-    {
-        Site *s = selSite->data;
-        sprintf(buffer, "Selected site rank: %1.2f", s->rank);
-        cairo_move_to(cr, 30, 60);
-        cairo_show_text(cr, buffer);
-    }*/
 
     g_list_foreach(sites, drawSiteLinks, cr);
     g_list_foreach(sites, drawSites, cr);
@@ -271,6 +264,7 @@ gboolean canvasDraw(GtkWidget *widget, cairo_t *cr, gpointer user_data)
 
 gboolean buttonPress(GtkWidget *widget, GdkEventButton *event, gpointer user_data)
 {
+    gtk_widget_grab_focus(GTK_WIDGET(canvas));
     if(event->button == 1) selSite = selectSite();
     return TRUE;
 }
@@ -377,11 +371,11 @@ gboolean keyPress(GtkWidget *widget, GdkEventKey *event, gpointer user_data)
     return TRUE;
 }
 
-void scaleChange(GtkRange *range, gpointer user_data)
+void valueChanged(GtkSpinButton *spin_button, gpointer user_data)
 {
-    if(range == GTK_RANGE(p_scale)) p = gtk_range_get_value(range);
-    if(range == GTK_RANGE(interval_scale)) update_interval = gtk_range_get_value(range);
-    if(range == GTK_RANGE(radius_scale)) radius = gtk_range_get_value(range);
+    if(spin_button == p_scale) p = gtk_spin_button_get_value(spin_button);
+    if(spin_button == interval_scale) update_interval = gtk_spin_button_get_value(spin_button);
+    if(spin_button == radius_scale) radius = gtk_spin_button_get_value(spin_button);
 }
 
 int main(int argc, char *argv[])
@@ -419,9 +413,9 @@ int main(int argc, char *argv[])
     window = GTK_WIDGET(gtk_builder_get_object(builder, "window"));
     canvas = GTK_WIDGET(gtk_builder_get_object(builder, "canvas"));
 
-    p_scale = GTK_SCALE(gtk_builder_get_object(builder, "p_scale"));
-    interval_scale = GTK_SCALE(gtk_builder_get_object(builder, "interval_scale"));
-    radius_scale = GTK_SCALE(gtk_builder_get_object(builder, "radius_scale"));
+    p_scale = GTK_SPIN_BUTTON(gtk_builder_get_object(builder, "p_scale"));
+    interval_scale = GTK_SPIN_BUTTON(gtk_builder_get_object(builder, "interval_scale"));
+    radius_scale = GTK_SPIN_BUTTON(gtk_builder_get_object(builder, "radius_scale"));
 
     gtk_builder_connect_signals(builder, NULL);
 
