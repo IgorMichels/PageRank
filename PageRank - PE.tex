@@ -10,6 +10,7 @@
 \usepackage{tikz}
 \usepackage{wrapfig}
 \usepackage{float}
+\usepackage{amsfonts}
 
 \tikzstyle{node} = [circle, draw = blue!50, fill = blue!20, thick, inner sep = 0pt, minimum size = 6mm]
 
@@ -43,7 +44,13 @@ Rapidamente o mecanismo ganhou força, virando o principal mecanismo de buscas. 
 
 \section*{Cadeias de Markov}
 
-escrever uma historinha aqui
+Cadeias de Markov são um modelo estocástico que descreve uma sequência de eventos onde a probabilidade dos mesmos só depende do estado anterior. Esses modelos podem ser aplicados em tempo discreto ou continuo, e são usados para diversos processos como filas ou dinâmica populacional animal. Processos de Markov são a base para simulações do tipo 'Monte Carlo Markov Chain', que podem ser usados para amostrar de distribuições de probabilidade complexas, com aplicações em diversas áreas.
+
+Cadeias de Markov podem ser representadas de forma simples por uma 'matriz de transição', que descreve as probabilidades de transição de cada estado em particular para os demais possíveis estados. Com essa modelagem, torna-se fácil manipular computacionalmente o processo. Também é possível obter resultados como a chamada 'distribuição estacionária', que representa uma especie de 'equilíbrio' no processo a longo prazo, onde é conhecida a representatividade de cada estado no todo. Essas distribuições estacionárias existem se, e somente se, a Cadeia de Markov em questão é 'não periódica', o que pode ser entendido como não haver ciclos de forma a limitar as transições a múltiplos fixos de passos para cada estado.
+
+
+
+% escrever uma historinha aqui
 % falar que existe um estado estacionário se, e somente se, é aperiódica
 
 \section*{PageRank}
@@ -180,6 +187,27 @@ Uma interpretação dessa alteração é a de que o processo ocorre com o intern
 
 Podemos perceber que, com essas alterações, os problemas de ficarmos presos num ciclo ou num nó terminal acabam, pois temos uma probabilidade positiva de ir a outro nó da rede. Por fim, note também que essa alteração fez a matriz $\tilde{M}$ ser positiva o que, pelo Teorema de Perron-Frobenius, diz que essa matriz possui um estado estacionário $\pi$.
 
+\subsubsection*{O teorema de Perron-Frobenius}
+
+O Teorema de Perron-Frobenius afirma, resumidamente, que uma matriz $d \times d$ de elementos positivos possui um autovalor positivo com multiplicidade algébrica um e é o maior autovalor em módulo. No nosso caso, isso é particularmente útil por representar que a matriz $\tilde{M}$ supracitada possui um autovetor correspondente ao autovalor enunciado e ao estado estacionário do processo modelado, garantindo sua existência e unicidade.
+
+
+\noindent
+\textbf{Teoriema de Perron-Frobenius}: Seja $A$ uma matriz $d \times d$ de entradas positivas, isto é $A_{ij}>0$ $\forall i,j=1,...,d$. Então:
+
+
+\begin{enumerate}
+    \item $A$ possui um único autovetor x de norma 1, cujas componentes são, todas elas, positivas;
+    \item o autovalor $\lambda_+$ associado ao autovetor x é positivo e, para qualquer outro autovalor $\lambda \in \mathbb{C}$, temos que $|\lambda| < \lambda_+$;
+    \item o autovalor $\lambda_+$ é simples;
+\end{enumerate}
+
+
+A prova dos itens desse teorema se dão, dentre outras abordagens, por álgebra linear. Detalhes dessa demostração não serão abordadas nesse texto por conveniência, já que se estende ao escopo do trabalho. A comprovação completa pode ser encontrada detalhadamente na seção 2 do texto "O Teorema de Perron-Frobenius e a Ausência de Transição
+de Fase em Modelos Unidimensionais da Mecânica
+Estatíıstica"\cite{perron-frobenius}, cujo link está listado nas referencias deste texto.
+
+
 % enunciar e provar o Teorema de Perron-Frobenius na seção de Cadeias de Markov
 
 
@@ -194,6 +222,12 @@ Podemos perceber que, com essas alterações, os problemas de ficarmos presos nu
 \bibitem{usp} O algoritmo PageRank do Google. \textit{Miguel Frasson - ICMC/USP}. \url{https://edisciplinas.usp.br/pluginfile.php/5790758/mod_resource/content/1/pagerank-estat.pdf}.
 
 \bibitem{wiki} ``PageRank''. \textit{Wikipedia}. \url{https://en.wikipedia.org/wiki/PageRank}.
+
+
+\bibitem{perron-frobenius} O Teorema de Perron-Frobenius e a Ausência de Transição
+de Fase em Modelos Unidimensionais da Mecânica
+Estatíıstica. \textit{Marcelo Richard Hilário - UFMG. Gastão Braga - UFMG}. \url{https://www.ime.usp.br/~map2121/2014/map2121/programas/perron-frobenius.pdf}.
+
 
 \end{thebibliography}
 
