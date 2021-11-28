@@ -80,25 +80,23 @@ Site *pickSite(Site *src)
 {
     if(numSites <= 1) return src;
 
-    Site *s = src;
+    Site *s;
 
-    while(s == src)
+    float r = g_rand_double(grand);
+
+    if(r <= p)
     {
-        float r = g_rand_double(grand);
-
-        if(!src->numLinks || r <= p)
-        {
-            int n = g_rand_int_range(grand, 0, numSites);
-            s = g_list_nth_data(sites, n);
-        }
-        else
-        {
-            int n = g_rand_int_range(grand, 0, src->numLinks);
-            s = g_list_nth_data(src->links, n);
-        }
+        int n = g_rand_int_range(grand, 0, numSites);
+        return g_list_nth_data(sites, n);
+    }
+    else
+    {
+        if(src->numLinks == 0) return src;
+        int n = g_rand_int_range(grand, 0, src->numLinks);
+        return g_list_nth_data(src->links, n);
     }
 
-    return s;
+    return NULL;
 }
 
 void drawSites(gpointer data, gpointer user_data)
