@@ -33,6 +33,7 @@ gboolean reverse;
 
 Pos2D cursorPos;
 GtkWidget *window, *canvas;
+GtkScale *p_scale, *interval_scale;
 
 GRand *grand;
 
@@ -308,6 +309,18 @@ gboolean keyPress(GtkWidget *widget, GdkEventKey *event, gpointer user_data)
                 selSite = NULL;
             }
             break;
+        case 'K':
+            {
+                selSite = NULL;
+                GList *cur = sites;
+                while(cur != NULL)
+                {
+                    GList *next = cur->next;
+                    killSite(cur);
+                    cur = next;
+                }
+            }
+            break;
         case 'l':
         case 'L': //add/remove = l/L link
             {
@@ -362,6 +375,12 @@ gboolean keyPress(GtkWidget *widget, GdkEventKey *event, gpointer user_data)
     return TRUE;
 }
 
+void scaleChange(GtkRange *range, gpointer user_data)
+{
+    if((GtkRange*)range == p_scale) p = gtk_range_get_value(range);
+    if((GtkRange*)range == interval_scale) update_interval = gtk_range_get_value(range);
+}
+
 int main(int argc, char *argv[])
 {
     sites = NULL;
@@ -396,6 +415,9 @@ int main(int argc, char *argv[])
 
     window = GTK_WIDGET(gtk_builder_get_object(builder, "window"));
     canvas = GTK_WIDGET(gtk_builder_get_object(builder, "canvas"));
+
+    p_scale = GTK_SCALE(gtk_builder_get_object(builder, "p_scale"));
+    interval_scale = GTK_SCALE(gtk_builder_get_object(builder, "interval_scale"));
 
     gtk_builder_connect_signals(builder, NULL);
 
