@@ -184,13 +184,13 @@ void drawLink(gpointer data, gpointer user_data)
     cairo_set_line_width(cr, 2);
     cairo_new_sub_path(cr);
     cairo_move_to(cr, pt_src.x, pt_src.y);
-    cairo_line_to(cr, pt_dst.x, pt_dst.y);
+    cairo_line_to(cr, pt_dst.x - 4*n.x, pt_dst.y - 4*n.y);
     cairo_set_source_rgb(cr, 0, 0, 0);
     cairo_stroke(cr);
 
     float s = 10;
 
-    cairo_move_to(cr, pt_dst.x, pt_dst.y);
+    cairo_move_to(cr, pt_dst.x - 4*n.x, pt_dst.y - 4*n.y);
     cairo_line_to(cr, pt_dst.x + s*(n2.x-n.x), pt_dst.y + s*(n2.y-n.y));
     cairo_line_to(cr, pt_dst.x + s*(-n2.x-n.x), pt_dst.y + s*(-n2.y-n.y));
     
