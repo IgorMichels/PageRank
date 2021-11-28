@@ -15,22 +15,21 @@ typedef struct
 typedef struct
 {
     Pos2D pos;
-    Color color;
     float radius;
-
     int numLinks;
     GList *links;
-
-    int numVisitors[2]; //double buffer -> pra atualizar
+    float rank;
+    int numVisitors[2]; //numVisitors[cycle] = current value
 } Site;
 
 GList *sites;
-int numSites = 0;
-int totalVisitors = 0;
-int cycle = 0;
+int numSites;
+int totalVisitors;
+int cycle;
 
-GList *selSite = NULL;
-char moving = 0;
+GList *selSite;
+gboolean moving;
+gboolean reverse;
 
 Pos2D cursorPos;
 GtkWidget *window, *canvas;
@@ -43,10 +42,10 @@ float g_dt;
 
 float g_updatetime;
 
-float update = 0.01;
+float update_interval;
 
-float radius = 20;
-float p = 0.01;
+float radius;
+float p;
 
 void killLinksInSite(gpointer data, gpointer user_data)
 {
@@ -68,7 +67,6 @@ void killLinksInSite(gpointer data, gpointer user_data)
 
 void killSite(GList *sl)
 {
-    if(sl == selSite) selSite = NULL;
     Site *s = sl->data;
     totalVisitors -= s->numVisitors[cycle];
     numSites--;
@@ -76,7 +74,6 @@ void killSite(GList *sl)
     g_list_foreach(sites, killLinksInSite, s);
     g_free(s);
     sites = g_list_delete_link(sites, sl);
-    g_print("A site has died\n");
 }
 
 Site *pickSite(Site *src)
@@ -108,22 +105,13 @@ void drawSites(gpointer data, gpointer user_data)
 {
     Site *s = data;
     cairo_t *cr = user_data;
-    Color col = s->color;
-
+    Color col;
+    
+    //compute rank
     float rank = ((float)s->numVisitors[cycle])/totalVisitors;
     if(totalVisitors == 0) rank = 0;
-    s->radius = radius + radius*rank;
 
-    col.r = rank;
-    col.g = 1-rank;
-    col.b = 0.1;
-    
-    if(selSite)
-    if(s == selSite->data)
-    {
-        col = (Color){0, 0, 1};
-    }
-
+    //move all visitors
     if(g_time >= g_updatetime)
     while(s->numVisitors[cycle] > 0)
     {
@@ -132,16 +120,36 @@ void drawSites(gpointer data, gpointer user_data)
         n->numVisitors[cycle^1]++;
     }
 
+    //smooth rank update
+    float diff = rank - s->rank;
+    if(fabs(diff) < 0.01)
+        s->rank = rank;
+    else 
+    {
+        diff /= fabs(diff);
+        s->rank += diff*g_dt/1000;
+        s->rank = fabs(s->rank);
+        if(s->rank > 1) s->rank = 1;
+    }
+
+
+    //inner circle
+    col = (Color){s->rank, 1-s->rank, 0};
     cairo_new_sub_path(cr);
     cairo_arc(cr, s->pos.x, s->pos.y, s->radius, 0, 2*M_PI);
     cairo_set_source_rgb(cr, col.r, col.g, col.b);
     cairo_fill_preserve(cr);
+
+    //outer ring
+    col = (Color){0.5, 0.1, 0.8};
+    if(selSite) if(s == selSite->data) col = (Color){1, 1, 1};
     cairo_set_line_width(cr, 4);
-    cairo_set_source_rgb(cr, 0.5, 0.1, 0.8);
+    cairo_set_source_rgb(cr, col.r, col.g, col.b);
     cairo_stroke(cr);
 
+    //rank text
     char buffer[16];    
-    sprintf(buffer, "%1.2f", rank);
+    sprintf(buffer, "%1.2f", s->rank);
 
     cairo_select_font_face(cr, "Arial", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
     cairo_set_font_size(cr, s->radius*0.75);
@@ -241,20 +249,20 @@ gboolean canvasDraw(GtkWidget *widget, cairo_t *cr, gpointer user_data)
     cairo_move_to(cr, 30, 30);
     cairo_show_text(cr, buffer);
 
-    if(selSite)
+    /*if(selSite)
     {
         Site *s = selSite->data;
-        sprintf(buffer, "Selected visitors: %d", s->numVisitors[cycle]);
+        sprintf(buffer, "Selected site rank: %1.2f", s->rank);
         cairo_move_to(cr, 30, 60);
         cairo_show_text(cr, buffer);
-    }
+    }*/
 
     g_list_foreach(sites, drawSiteLinks, cr);
     g_list_foreach(sites, drawSites, cr);
 
     if(g_time > g_updatetime)
     {
-        g_updatetime = g_time + update;
+        g_updatetime = g_time + update_interval;
         cycle = cycle ^ 1;
     }
     return TRUE;
@@ -281,62 +289,62 @@ gboolean keyPress(GtkWidget *widget, GdkEventKey *event, gpointer user_data)
 {
     switch(event->keyval)
     {
-        case 's':
+        case 's': //create site
             {
                 Site *s = (Site*)g_malloc(sizeof(Site));
                 s->pos = cursorPos;
-                s->color = (Color){1, 1, 1};
                 s->radius = radius;
                 s->numLinks = 0;
                 s->links = NULL;
                 s->numVisitors[0] = 0;
                 s->numVisitors[1] = 0;
+                s->rank = 0;
                 sites = g_list_prepend(sites, s);
                 numSites++;
             }
             break;
-        case 'r':
-            {
-                GList *dst = selectSite();
-                if(!dst) break;
-                if(!selSite) break;
-                killLinksInSite(selSite->data, dst->data);
-            }
-            break;
-        case 'k':
+        case 'k': //kill selected site
             {
                 if(!selSite) break;
                 killSite(selSite);
+                selSite = NULL;
             }
             break;
         case 'l':
+        case 'L': //add/remove = l/L link
             {
-                GList *dst = selectSite();
-                if(!dst) break;
+                GList *sel = selectSite();
+                if(!sel) break;
                 if(!selSite) break;
-                killLinksInSite(selSite->data, dst->data);
+                Site *dst = sel->data;
                 Site *s = (Site*)selSite->data;
-                s->links = g_list_prepend(s->links, dst->data);
+
+                if(reverse)
+                {
+                    Site *tmp = s;
+                    s = dst;
+                    dst = tmp;
+                }
+
+                killLinksInSite(s, dst);
+                if(event->keyval == 'L') break;
+    
+                s->links = g_list_prepend(s->links, dst);
                 s->numLinks++;
             }
             break;
         case 'v':
+        case 'V':
             {
+                int num = 1;
+                if(event->keyval == 'V') num = 1000;
                 if(!selSite) break;
                 Site* s = selSite->data;
-                s->numVisitors[cycle]++;
-                totalVisitors++;
+                s->numVisitors[cycle] += num;
+                totalVisitors += num;
             }
             break;
-        case 'c':
-            {
-                if(!selSite) break;
-                Site* s = selSite->data;
-                s->numVisitors[cycle] += 1000;
-                totalVisitors += 1000;
-            }
-            break;
-        case 'e':
+        case 'e': //clear visitors
             {
                 GList *cur = sites;
                 while(cur != NULL)
@@ -350,9 +358,8 @@ gboolean keyPress(GtkWidget *widget, GdkEventKey *event, gpointer user_data)
                 totalVisitors = 0;
             }
             break;
-        case 'm':
-            moving = !moving;
-            break;
+        case 'm': moving = !moving; break; //move selected site
+        case 'r': reverse = !reverse; break; //link direction
     }
     return TRUE;
 }
@@ -360,10 +367,21 @@ gboolean keyPress(GtkWidget *widget, GdkEventKey *event, gpointer user_data)
 int main(int argc, char *argv[])
 {
     sites = NULL;
+    numSites = 0;
+    totalVisitors = 0;
+
+    selSite = NULL;
+    moving = FALSE;
+    reverse = FALSE;
+
+    update_interval = 1;
+    p = 0.1;
+    radius = 20;
+    cycle = 0;
 
     g_time = 0;
-    g_updatetime = update;
     g_dt = 1000.0/FPS;
+    g_updatetime = update_interval;
 
     grand = g_rand_new();
 
