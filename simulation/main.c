@@ -33,7 +33,7 @@ gboolean reverse;
 
 Pos2D cursorPos;
 GtkWidget *window, *canvas;
-GtkScale *p_scale, *interval_scale;
+GtkScale *p_scale, *interval_scale, *radius_scale;
 
 GRand *grand;
 
@@ -130,6 +130,8 @@ void drawSites(gpointer data, gpointer user_data)
         s->rank = fabs(s->rank);
         if(s->rank > 1) s->rank = 1;
     }
+
+    s->radius = s->rank*radius + radius;
 
 
     //inner circle
@@ -377,8 +379,9 @@ gboolean keyPress(GtkWidget *widget, GdkEventKey *event, gpointer user_data)
 
 void scaleChange(GtkRange *range, gpointer user_data)
 {
-    if((GtkRange*)range == p_scale) p = gtk_range_get_value(range);
-    if((GtkRange*)range == interval_scale) update_interval = gtk_range_get_value(range);
+    if(range == GTK_RANGE(p_scale)) p = gtk_range_get_value(range);
+    if(range == GTK_RANGE(interval_scale)) update_interval = gtk_range_get_value(range);
+    if(range == GTK_RANGE(radius_scale)) radius = gtk_range_get_value(range);
 }
 
 int main(int argc, char *argv[])
@@ -418,6 +421,7 @@ int main(int argc, char *argv[])
 
     p_scale = GTK_SCALE(gtk_builder_get_object(builder, "p_scale"));
     interval_scale = GTK_SCALE(gtk_builder_get_object(builder, "interval_scale"));
+    radius_scale = GTK_SCALE(gtk_builder_get_object(builder, "radius_scale"));
 
     gtk_builder_connect_signals(builder, NULL);
 
