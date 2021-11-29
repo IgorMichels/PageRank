@@ -152,7 +152,7 @@ void drawSites(gpointer data, gpointer user_data)
     //outer ring
     col = (Color){0.5, 0.1, 0.8};
     if(selSite) if(s == selSite->data) col = (Color){1, 1, 1};
-    cairo_set_line_width(cr, 4);
+    cairo_set_line_width(cr, radius/8);
     cairo_set_source_rgb(cr, col.r, col.g, col.b);
     cairo_stroke(cr);
 
@@ -189,14 +189,16 @@ void drawLink(gpointer data, gpointer user_data)
     Pos2D pt_src = (Pos2D){src->pos.x + src->radius*n.x, src->pos.y + src->radius*n.y};
     Pos2D pt_dst = (Pos2D){dst->pos.x - dst->radius*n.x, dst->pos.y - dst->radius*n.y};
 
-    cairo_set_line_width(cr, 2);
+    float t = radius/5;
+
+    cairo_set_line_width(cr, radius/10);
     cairo_new_sub_path(cr);
-    cairo_move_to(cr, pt_src.x + 4*n.x, pt_src.y + 4*n.y);
-    cairo_line_to(cr, pt_dst.x - 4*n.x, pt_dst.y - 4*n.y);
+    cairo_move_to(cr, pt_src.x + t*n.x, pt_src.y + t*n.y);
+    cairo_line_to(cr, pt_dst.x - t*n.x, pt_dst.y - t*n.y);
     cairo_set_source_rgb(cr, 0, 0, 0);
     cairo_stroke(cr);
 
-    float s = 10;
+    float s = radius/2;
 
     cairo_move_to(cr, pt_dst.x - 4*n.x, pt_dst.y - 4*n.y);
     cairo_line_to(cr, pt_dst.x + s*(n2.x-n.x), pt_dst.y + s*(n2.y-n.y));
