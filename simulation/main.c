@@ -29,8 +29,6 @@ int cycle;
 
 GList *selSite;
 gboolean moving;
-gboolean reverse;
-
 Pos2D cursorPos;
 GtkWidget *window, *canvas;
 GtkSpinButton *p_scale, *interval_scale, *radius_scale;
@@ -50,7 +48,8 @@ float p;
 
 void killLinksInSite(gpointer data, gpointer user_data)
 {
-    Site *dst = (Site*)user_data;
+    Site **pdst = (Site**)user_data;
+    Site *dst = *pdst;
     Site *src = (Site*)data;
 
     GList *cur = src->links;
@@ -59,6 +58,7 @@ void killLinksInSite(gpointer data, gpointer user_data)
         GList *next = cur->next;
         if(cur->data == dst)
         {
+            *pdst = NULL;
             src->links = g_list_delete_link(src->links, cur);
             src->numLinks--;
         }
@@ -72,8 +72,8 @@ void killSite(GList *sl)
     totalVisitors -= s->numVisitors[cycle];
     numSites--;
     g_list_free(s->links);
-    g_list_foreach(sites, killLinksInSite, s);
     g_free(s);
+    g_list_foreach(sites, killLinksInSite, &s);
     sites = g_list_delete_link(sites, sl);
 }
 
@@ -183,7 +183,7 @@ void drawLink(gpointer data, gpointer user_data)
 
     cairo_set_line_width(cr, 2);
     cairo_new_sub_path(cr);
-    cairo_move_to(cr, pt_src.x, pt_src.y);
+    cairo_move_to(cr, pt_src.x + 4*n.x, pt_src.y + 4*n.y);
     cairo_line_to(cr, pt_dst.x - 4*n.x, pt_dst.y - 4*n.y);
     cairo_set_source_rgb(cr, 0, 0, 0);
     cairo_stroke(cr);
@@ -298,14 +298,8 @@ gboolean keyPress(GtkWidget *widget, GdkEventKey *event, gpointer user_data)
                 numSites++;
             }
             break;
-        case 'k': //kill selected site
-            {
-                if(!selSite) break;
-                killSite(selSite);
-                selSite = NULL;
-            }
-            break;
-        case 'K':
+        case GDK_KEY_Delete: //kill selected site
+            if(event->state & GDK_SHIFT_MASK)
             {
                 selSite = NULL;
                 GList *cur = sites;
@@ -316,9 +310,15 @@ gboolean keyPress(GtkWidget *widget, GdkEventKey *event, gpointer user_data)
                     cur = next;
                 }
             }
+            else
+            {
+                if(!selSite) break;
+                killSite(selSite);
+                selSite = NULL;
+            }
             break;
-        case 'l':
-        case 'L': //add/remove = l/L link
+        case 'l': // add/remove link from selection
+        case 'L': // add/remove link to selection
             {
                 GList *sel = selectSite();
                 if(!sel) break;
@@ -326,32 +326,31 @@ gboolean keyPress(GtkWidget *widget, GdkEventKey *event, gpointer user_data)
                 Site *dst = sel->data;
                 Site *s = (Site*)selSite->data;
 
-                if(reverse)
+                if(event->keyval == 'L')
                 {
                     Site *tmp = s;
                     s = dst;
                     dst = tmp;
                 }
 
-                killLinksInSite(s, dst);
-                if(event->keyval == 'L') break;
+                killLinksInSite(s, &dst);
+                if(dst == NULL) break;
     
                 s->links = g_list_prepend(s->links, dst);
                 s->numLinks++;
             }
             break;
-        case 'v':
-        case 'V':
+        case GDK_KEY_Insert: //normal: add 1 visitor; +shift: add 1000
             {
                 int num = 1;
-                if(event->keyval == 'V') num = 1000;
+                if(event->state & GDK_SHIFT_MASK) num = 1000;
                 if(!selSite) break;
                 Site* s = selSite->data;
                 s->numVisitors[cycle] += num;
                 totalVisitors += num;
             }
             break;
-        case 'e': //clear visitors
+        case GDK_KEY_Home: //clear visitors
             {
                 GList *cur = sites;
                 while(cur != NULL)
@@ -366,7 +365,6 @@ gboolean keyPress(GtkWidget *widget, GdkEventKey *event, gpointer user_data)
             }
             break;
         case 'm': moving = !moving; break; //move selected site
-        case 'r': reverse = !reverse; break; //link direction
     }
     return TRUE;
 }
@@ -386,7 +384,6 @@ int main(int argc, char *argv[])
 
     selSite = NULL;
     moving = FALSE;
-    reverse = FALSE;
 
     update_interval = 1;
     p = 0.1;

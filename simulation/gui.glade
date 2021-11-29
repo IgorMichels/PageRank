@@ -67,19 +67,20 @@
                 <property name="width_request">25</property>
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
-                <property name="tooltip_markup" translatable="yes">&lt;span size="large"&gt;
-PageRank simulation :)
-Key controls:
-S place site on cursor
-Lower V: place 1 visitor on site
-Upper V: place 100 visitors on site
-Lower L: place link to/from selected site
-Upper L: remove link to/from selected site
-R: toggle direction for links
-M: toggle to move selected site
-Lower K: kill site
-Upper K: kill all sites
-E: clear all visitors
+                <property name="tooltip_markup" translatable="yes">&lt;span size="x-large"&gt;
+&lt;i&gt;PageRank simulation&lt;/i&gt;
+
+S: add site at cursor position
+
+L: add/remove link &lt;b&gt;from&lt;/b&gt; selected site (shift = add/remove link &lt;b&gt;to&lt;/b&gt; selected site)
+
+Insert: add 1 visitor to selected site (shift = add 1000 instead)
+
+M: move selected site to cursor position (toggle)
+
+Home: clear all visitors
+
+Delete: clear selected site (shift = clear all sites) 
 &lt;/span&gt;</property>
                 <property name="label" translatable="yes">Hover for Help</property>
                 <property name="track_visited_links">False</property>
