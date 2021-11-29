@@ -46,10 +46,16 @@ float update_interval;
 float radius;
 float p;
 
+typedef struct
+{
+    Site *dst;
+    gboolean exists;
+} killLinksInSiteData;
+
 void killLinksInSite(gpointer data, gpointer user_data)
 {
-    Site **pdst = (Site**)user_data;
-    Site *dst = *pdst;
+    killLinksInSiteData *str = (killLinksInSiteData*)user_data;
+    Site *dst = str->dst;
     Site *src = (Site*)data;
 
     GList *cur = src->links;
@@ -58,7 +64,7 @@ void killLinksInSite(gpointer data, gpointer user_data)
         GList *next = cur->next;
         if(cur->data == dst)
         {
-            *pdst = NULL;
+            str->exists = TRUE;
             src->links = g_list_delete_link(src->links, cur);
             src->numLinks--;
         }
@@ -73,8 +79,10 @@ void killSite(GList *sl)
     numSites--;
     g_list_free(s->links);
     g_free(s);
-    g_list_foreach(sites, killLinksInSite, &s);
     sites = g_list_delete_link(sites, sl);
+
+    killLinksInSiteData str = (killLinksInSiteData) {s, FALSE};
+    g_list_foreach(sites, killLinksInSite, &str);
 }
 
 Site *pickSite(Site *src)
@@ -242,13 +250,13 @@ gboolean canvasDraw(GtkWidget *widget, cairo_t *cr, gpointer user_data)
     cairo_paint(cr);
 
     cairo_select_font_face(cr, "Arial", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
-    cairo_set_font_size(cr, 24);
+    cairo_set_font_size(cr, 48);
     cairo_set_source_rgb(cr, 0, 0, 0);
 
     char buffer[512];
 
     sprintf(buffer, "Total visitors: %d", totalVisitors);
-    cairo_move_to(cr, 30, 30);
+    cairo_move_to(cr, 30, 48);
     cairo_show_text(cr, buffer);
 
     g_list_foreach(sites, drawSiteLinks, cr);
@@ -333,8 +341,10 @@ gboolean keyPress(GtkWidget *widget, GdkEventKey *event, gpointer user_data)
                     dst = tmp;
                 }
 
-                killLinksInSite(s, &dst);
-                if(dst == NULL) break;
+                killLinksInSiteData str = (killLinksInSiteData){dst, FALSE};
+
+                killLinksInSite(s, &str);
+                if(str.exists) break;
     
                 s->links = g_list_prepend(s->links, dst);
                 s->numLinks++;
