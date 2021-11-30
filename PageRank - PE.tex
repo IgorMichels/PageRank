@@ -8,7 +8,6 @@
 \usepackage{tcolorbox}
 \usepackage{amsmath}
 \usepackage{tikz}
-\usepackage{wrapfig}
 \usepackage{float}
 \usepackage{amsfonts}
 
@@ -48,7 +47,20 @@ Cadeias de Markov são um modelo estocástico que descreve uma sequência de eve
 
 Cadeias de Markov podem ser representadas de forma simples por uma 'matriz de transição', que descreve as probabilidades de transição de cada estado em particular para os demais possíveis estados. Com essa modelagem, torna-se fácil manipular computacionalmente o processo. Também é possível obter resultados como a chamada 'distribuição estacionária', que representa uma especie de 'equilíbrio' no processo a longo prazo, onde é conhecida a representatividade de cada estado no todo. Essas distribuições estacionárias existem se, e somente se, a Cadeia de Markov em questão é 'não periódica', o que pode ser entendido como não haver ciclos de forma a limitar as transições a múltiplos fixos de passos para cada estado.
 
+\subsubsection*{O teorema de Perron-Frobenius}
 
+O Teorema de Perron-Frobenius afirma, resumidamente, que uma matriz $d \times d$ de elementos positivos possui um autovalor positivo com multiplicidade algébrica um e é o maior autovalor em módulo. No nosso caso, isso é particularmente útil por garantir que uma matriz de transição de estados possua um autovetor correspondente ao autovalor $1$, sendo justamente o estado estacionário do processo modelado, além de garantir a unicidade do mesmo.
+
+\noindent
+\textbf{Teorema de Perron-Frobenius}: Seja $A$ uma matriz $d \times d$ de entradas positivas, isto é $A_{ij}>0$ $\forall i, j = 1, \dots, d$. Então:
+
+\begin{enumerate}
+    \item $A$ possui um único autovetor $x$ de norma $1$, cujas componentes são, todas elas, positivas;
+    \item o autovalor $\lambda_+$ associado ao autovetor $x$ é positivo e, para qualquer outro autovalor $\lambda \in \mathbb{C}$, temos que $|\lambda| < \lambda_+$;
+    \item o autovalor $\lambda_+$ é simples;
+\end{enumerate}
+
+A prova dos itens desse teorema se dão, dentre outras abordagens, por álgebra linear. Detalhes dessa demostração não serão abordadas nesse texto por conveniência, já que se estende ao escopo do trabalho. A comprovação completa pode ser encontrada detalhadamente na seção 2 de \cite{perron-frobenius}.
 
 % escrever uma historinha aqui
 % falar que existe um estado estacionário se, e somente se, é aperiódica
@@ -76,20 +88,6 @@ Pensando em Cadeias de Markov, e em sua evolução temporal, podemos pensar que 
 Note que essas propriedades são justamente as desejáveis para nosso ranking, ou seja, estamos com uma métrica em que os sites mais bem colocados tenham votos com peso maior que os piores colocados. Por fim, temos que a relevância pode ser calculada por meio do vetor estacionário da Cadeia de Markov definida pela rede.
 
 \subsection*{Alguns problemas da modelagem}
-
-% \begin{wrapfigure}{R}{0.3\textwidth}
-%     \centering
-%     \begin{tikzpicture}
-%         \node (A) at (0, 1.7) [node] {A};
-%         \node (B) at (-1, 0) [node] {B};
-%         \node (C) at (1, 0) [node] {C};
-%         \draw [->, line width = 0.25mm] (A) -- (B);
-%         \draw [->, line width = 0.25mm] (B) -- (C);
-%         \draw [->, line width = 0.25mm] (C) -- (A);
-%     \end{tikzpicture}
-%     \caption{Exemplo de rede cíclica.}
-%     \label{graph}
-% \end{wrapfigure}
 
 Vamos supor que uma sub-rede da nossa rede seja cíclica, como na Figura \ref{graph1}. Se executarmos o passeio aleatório definido anteriormente temos que, se um internauta cair dentro desse ciclo, em $A$, por exemplo, ele ficará seguindo o caminho $A\to B\to C\to A$ infinitamente. Dessa forma, podemos ver que, ao entrar no ciclo, o tempo que o internauta permanece em cada site desse ciclo é $\frac{1}{3}$, o que nos daria igual relevância a cada um dos três sites do ciclo e relevância zero para os demais sites da rede, o que seria problemático.
 
@@ -187,28 +185,7 @@ Uma interpretação dessa alteração é a de que o processo ocorre com o intern
 
 Podemos perceber que, com essas alterações, os problemas de ficarmos presos num ciclo ou num nó terminal acabam, pois temos uma probabilidade positiva de ir a outro nó da rede. Por fim, note também que essa alteração fez a matriz $\tilde{M}$ ser positiva o que, pelo Teorema de Perron-Frobenius, diz que essa matriz possui um estado estacionário $\pi$.
 
-\subsubsection*{O teorema de Perron-Frobenius}
 
-O Teorema de Perron-Frobenius afirma, resumidamente, que uma matriz $d \times d$ de elementos positivos possui um autovalor positivo com multiplicidade algébrica um e é o maior autovalor em módulo. No nosso caso, isso é particularmente útil por representar que a matriz $\tilde{M}$ supracitada possui um autovetor correspondente ao autovalor enunciado e ao estado estacionário do processo modelado, garantindo sua existência e unicidade.
-
-
-\noindent
-\textbf{Teoriema de Perron-Frobenius}: Seja $A$ uma matriz $d \times d$ de entradas positivas, isto é $A_{ij}>0$ $\forall i,j=1,...,d$. Então:
-
-
-\begin{enumerate}
-    \item $A$ possui um único autovetor x de norma 1, cujas componentes são, todas elas, positivas;
-    \item o autovalor $\lambda_+$ associado ao autovetor x é positivo e, para qualquer outro autovalor $\lambda \in \mathbb{C}$, temos que $|\lambda| < \lambda_+$;
-    \item o autovalor $\lambda_+$ é simples;
-\end{enumerate}
-
-
-A prova dos itens desse teorema se dão, dentre outras abordagens, por álgebra linear. Detalhes dessa demostração não serão abordadas nesse texto por conveniência, já que se estende ao escopo do trabalho. A comprovação completa pode ser encontrada detalhadamente na seção 2 do texto "O Teorema de Perron-Frobenius e a Ausência de Transição
-de Fase em Modelos Unidimensionais da Mecânica
-Estatíıstica"\cite{perron-frobenius}, cujo link está listado nas referencias deste texto.
-
-
-% enunciar e provar o Teorema de Perron-Frobenius na seção de Cadeias de Markov
 
 
 
@@ -223,11 +200,7 @@ Estatíıstica"\cite{perron-frobenius}, cujo link está listado nas referencias 
 
 \bibitem{wiki} ``PageRank''. \textit{Wikipedia}. \url{https://en.wikipedia.org/wiki/PageRank}.
 
-
-\bibitem{perron-frobenius} O Teorema de Perron-Frobenius e a Ausência de Transição
-de Fase em Modelos Unidimensionais da Mecânica
-Estatíıstica. \textit{Marcelo Richard Hilário - UFMG. Gastão Braga - UFMG}. \url{https://www.ime.usp.br/~map2121/2014/map2121/programas/perron-frobenius.pdf}.
-
+\bibitem{perron-frobenius} O Teorema de Perron-Frobenius e a Ausência de Transição de Fase em Modelos Unidimensionais da Mecânica Estatíıstica. \textit{Marcelo Richard Hilário - UFMG. Gastão Braga - UFMG}. \url{https://www.ime.usp.br/~map2121/2014/map2121/programas/perron-frobenius.pdf}.
 
 \end{thebibliography}
 
