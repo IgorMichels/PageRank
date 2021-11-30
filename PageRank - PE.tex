@@ -10,6 +10,34 @@
 \usepackage{tikz}
 \usepackage{float}
 \usepackage{amsfonts}
+\usepackage{listings}
+\usepackage{xcolor}
+
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+
+\lstdefinestyle{mystyle}{
+    backgroundcolor=\color{backcolour},   
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{magenta},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,         
+    breaklines=true,                 
+    captionpos=b,                    
+    keepspaces=true,                 
+    numbers=left,                    
+    numbersep=5pt,                  
+    showspaces=false,                
+    showstringspaces=false,
+    showtabs=false,                  
+    tabsize=2
+}
+
+\lstset{style=mystyle}
 
 \tikzstyle{node} = [circle, draw = blue!50, fill = blue!20, thick, inner sep = 0pt, minimum size = 6mm]
 
@@ -23,6 +51,7 @@
 }
 
 \geometry{top = 3cm, bottom = 2cm, right = 2cm, left = 3cm}
+
 \title{PageRank e Cadeias de Markov}
 \author{Cristhian Grundmann \\
 Hanna Rodrigues Ferreira \\
@@ -71,13 +100,6 @@ Indo um pouco na contramão de algumas outras estratégias, o PageRank visa calc
 \begin{mybox}{green}{Exemplo}
     Um site que recebe apenas um link, mas do G1, deve ser mais relevante que um site que recebe apenas um link de um site pessoal.
 \end{mybox}
-
-% \begin{figure}
-%     \centering
-%     \includegraphics[scale = 0.5]{PageRanks-Example.png}
-%     \caption{Páginas e suas relevâncias. Note que, mesmo com apenas um ``voto'', a página C tem uma alta relevância. Exemplo de \cite{wiki}.}
-%     \label{wiki_example}
-% \end{figure}
 
 \subsection*{Conexão com as Cadeias de Markov}
 
@@ -185,11 +207,122 @@ Uma interpretação dessa alteração é a de que o processo ocorre com o intern
 
 Podemos perceber que, com essas alterações, os problemas de ficarmos presos num ciclo ou num nó terminal acabam, pois temos uma probabilidade positiva de ir a outro nó da rede. Por fim, note também que essa alteração fez a matriz $\tilde{M}$ ser positiva o que, pelo Teorema de Perron-Frobenius, diz que essa matriz possui um estado estacionário $\pi$.
 
+\section*{Implementações Computacionais}
 
+Nessa seção iremos comentar acerca da parte computacional do tema, isso é, sobre a implementação do PageRank em Python e uma simulação em C.
 
+\subsection*{Cálculo do PageRank}
 
+\subsubsection*{Solução via Sistema Linear}
 
+Lembrando que, como comentado anteriormente, o PageRank pode ser visto como o autovetor correspondente ao autovalor $1$ da matriz $\tilde{M}$, como definida anteriormente. Dessa forma, podemos calcular o PageRank por meio da resolução de um sistema linear do tipo $I - (1 - p)\cdot A^\top = b$, onde $A$ é a matriz de adjacências do grafo correspondente, já normalizada por linha e $b$ é um vetor de coluna com $n$ linhas e todas as entradas sendo iguais a $\frac{p}{n}$. Uma implementação para isso pode ser vista na Listing \ref{sistema}, onde a entrada é a matriz de adjacências de um grafo e o valor $p$ correspondente a probabilidade de um salto aleatório.
 
+\begin{lstlisting}[language = Python, caption = Algoritmos para calcular a integral dada de modo aproximado., label = sistema]
+import numpy as np
+from numpy.linalg import solve
+
+def PageRank(A, p):
+    A = np.array(A, dtype = np.float64)
+    for i in range(A.shape[0]):
+        soma = sum(A[i, :])
+        for j in range(A.shape[1]):
+            A[i, j] = A[i, j]/soma
+    
+    A = A.T
+    n = A.shape[1]
+    A = np.eye(n, n) - (1 - p) * A
+    b = p * (np.ones(n, dtype = np.float64) / n)
+    
+    return solve(A, b)
+\end{lstlisting}
+
+\subsubsection*{Solução via Método da Potência}
+
+Uma outra forma de encontrar o PageRank é usar sua interpretação de vetor estacionário, ou seja, um vetor $\pi$ tal que $M\pi = \pi$. Dessa forma, podemos pensar em encontrar o PageRank de uma rede por meio de um processo iterativo onde aplicamos a matriz $\tilde{M}$ várias vezes a um vetor inicial, até que ocorra a convergência. Essa ideia pode ser vista na Listing \ref{potencia}, onde a função recebe a matriz $A$, matriz de adjacências do grafo correspondente, $p$, a probabilidade de salto aleatório, e $tol$, uma tolerância para a convergência. Na função calculamos a matriz $\tilde{M}$ e aplicamos ela no vetor $e_1$ até que ocorra a convergência.
+
+\begin{lstlisting}[language = Python, caption = Algoritmos para calcular a integral dada de modo aproximado., label = potencia]
+import numpy as np
+from numpy.linalg import norm
+
+def PageRank(A, p, tol = 1e-10):
+    A = np.array(A, dtype = np.float64)
+    for i in range(A.shape[0]):
+        soma = sum(A[i, :])
+        for j in range(A.shape[1]):
+            A[i, j] = A[i, j]/soma
+            
+    n = A.shape[0]
+    A = (1 - p) * A + p * np.ones((n, n)) / n
+    
+    v0 = np.zeros(n, dtype = np.float64)
+    v0[0] = 1
+    v1 = v0 @ A
+    while norm(v1 - v0) > tol:
+        v0 = v1
+        v1 = v0 @ A
+        
+    return v1
+\end{lstlisting}
+
+\subsubsection*{Exemplo}
+
+Os códigos acima foram testados na rede da Figura \ref{exemplo}, com $p = 0.15$. Note que a matriz de adjacências correspondente é dada por
+\[A = \begin{bmatrix}0 & 1 & 1 & 1 & 1 \\ 1 & 0 & 1 & 1 & 1 \\ 1 & 1 & 0 & 1 & 1 \\ 1 & 1 & 1 & 0 & 1 \\ 0 & 0 & 0 & 0 & 1\end{bmatrix},\]
+
+\noindent nos dando as matrizes
+\[A = \begin{bmatrix}1 & -0.2125 & -0.2125 & -0.2125 & 0 \\ -0.2125 & 1 & -0.2125 & -0.2125 & 0 \\ -0.2125 & -0.2125 & 1 & -0.2125 & 0 \\ -0.2125 & -0.2125 & -0.2125 & 1 & 0 \\ -0.2125 & -0.2125 & -0.2125 & -0.2125 & 0.15\end{bmatrix}\text{ e }\tilde{M} = \begin{bmatrix}0.03 & 0.2425 & 0.2425 & 0.2425 & 0.2425 \\ 0.2425 & 0.03 & 0.2425 & 0.2425 & 0.2425 \\ 0.2425 & 0.2425 & 0.03 & 0.2425 & 0.2425 \\ 0.2425 & 0.2425 & 0.2425 & 0.03 & 0.2425 \\ 0.03 & 0.03 & 0.03 & 0.03 & 0.88\end{bmatrix},\]
+
+\noindent correspondentes a resolução pelo sistema linear e pelo método da potência, respectivamente. Como resultado, temos que o PageRank dessa rede é $\begin{bmatrix}0.0827586 & 0.0827586 & 0.0827586 & 0.0827586 & 0.668966\end{bmatrix}$.
+
+\begin{figure}[H]
+    \centering
+    \begin{tikzpicture}
+        \node (0) at (3, 0) [node] {0};
+        \node (1) at (0.9271, 2.8532) [node] {1};
+        \node (2) at (-2.4271, 1.7634) [node] {2};
+        \node (3) at (-2.4271, -1.7634) [node] {3};
+        \node (4) at (0.9271, -2.8532) [node] {4};
+        \draw [<->] (0) -- (1);
+        \draw [<->] (0) -- (2);
+        \draw [<->] (0) -- (3);
+        \draw [->] (0) -- (4);
+        \draw [<->] (1) -- (2);
+        \draw [<->] (1) -- (3);
+        \draw [->] (1) -- (4);
+        \draw [<->] (2) -- (3);
+        \draw [->] (2) -- (4);
+        \draw [->] (3) -- (4);
+    \end{tikzpicture}
+    \caption{Exemplo de rede.}
+    \label{exemplo}
+\end{figure}
+
+\subsection*{Simulação}
+
+A simulação do PageRank funciona em uma rede de sites, que podem ter links para outros sites, exceto a si mesmos. Um site pode não ter links.
+
+Cada site possui, inicialmente, uma certa quantidade de visitantes, possivelmente aleatória. A simulação consiste em iterações sobre o número de visitantes em cada site, onde o comportamento assintótico é o objeto de estudo. Para computar uma iteração, é tratado um site por vez. A ordem de tratamento não afeta o resultado final. Cada visitante faz um passo da cadeia de Markov associada ao PageRank, que funciona da seguinte forma:
+\begin{itemize}
+    \item com probabilidade p, o internauta escolhe um site aleatório entre todos os sites (salto), ignorando os links, com distribuição uniforme;
+    \item caso contrário, escolhe um link do seu site atual aleatoriamente, novamente com distribuição uniforme. No caso do site não ter nenhum link, o visitante permanece no mesmo site.
+\end{itemize}
+
+Note que o visitante pode se manter no site no caso de um salto ou quando não há links para seguir a partir do site atual.
+
+A implementação não é tão trivial, pois a quantidade de visitantes de um site não pode sofrer interferência de um site tratado anteriormente. Por exemplo, os visitantes do primeiro site podem ir para outros sites, mas quando estes forem tratados, os visitantes novos não podem ser contados, somente os antigos.
+
+Para resolver isso, cada site possui, na verdade, duas variáveis para lembrar a quantidade de visitantes. Uma é primária e outra secundária. Quando um site é tratado, os visitantes atuais estão na variável primária e vão para a variável secundária nos seus destinos. No final do tratamento, a variável primária do site deve ser $0$, pois todos os visitantes do site foram tratados. Aqueles que continuam no mesmo site estão na variável secundária.
+
+Após tratar todos os sites, os papéis das duas variáveis são trocados. Note que antes da iteração, todas as variáveis secundárias sempre são $0$, e é importante que haja uma inicialização adequada antes da primeira iteração.
+
+O programa que implementa a simulação foi escrito em C, e usa a biblioteca GTK+3. A compilação foi testada apenas em sistemas Linux, e depende do pacote \texttt{libgtk-3-dev}, além do compilador C e do comando \texttt{make} provavelmente já instalado por padrão. A compilação pode ser feita usando o arquivo Makefile, rodando o comando \texttt{make}. O programa tem uma interface gráfica, como pode ser vista na Figura \ref{simulacao}. Nessa interface há uma região mostrando a rede, e uma região com 3 controles, o valor de $p$, o tempo das iterações, e o raio/escala dos elementos da rede. Há uma região que exibe um texto descrevendo os comandos para manipular a rede, bastando passar o mouse por cima.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[scale = 0.35]{pagerank_demo.png}
+    \caption{Interface gráfica do programa criado para ilustrar o PageRank.}
+    \label{simulacao}
+\end{figure}
 
 \newpage
 \begin{thebibliography}{9}
