@@ -46,6 +46,8 @@ float update_interval;
 float radius;
 float p;
 
+float width = 256, height = 256;
+
 typedef struct
 {
     Site *dst;
@@ -83,6 +85,18 @@ void killSite(GList *sl)
 
     killLinksInSiteData str = (killLinksInSiteData) {s, FALSE};
     g_list_foreach(sites, killLinksInSite, &str);
+}
+
+void killAllSites()
+{
+    selSite = NULL;
+    GList *cur = sites;
+    while(cur != NULL)
+    {
+        GList *next = cur->next;
+        killSite(cur);
+        cur = next;
+    }
 }
 
 Site *pickSite(Site *src)
@@ -233,6 +247,67 @@ GList *selectSite()
     return NULL;
 }
 
+Site* putSite()
+{
+    Site *s = (Site*)g_malloc(sizeof(Site));
+    s->pos = cursorPos;
+    s->radius = radius;
+    s->numLinks = 0;
+    s->links = NULL;
+    s->numVisitors[0] = 0;
+    s->numVisitors[1] = 0;
+    s->rank = 0;
+    sites = g_list_prepend(sites, s);
+    numSites++;
+    return s;
+}
+
+void randomSite(float r)
+{
+    Pos2D cursor = cursorPos;
+
+    cursorPos = (Pos2D){
+        g_rand_double_range(grand, 0+radius, width-radius),
+        g_rand_double_range(grand, 0+radius, height-radius)};
+
+    GList *sel = selectSite();
+
+    if(sel != NULL)
+    {
+        cursorPos = cursor;
+        return;
+    }
+
+    Site *s = putSite();
+    cursorPos = cursor;
+
+    GList *cur = sites;
+
+    while(cur != NULL)
+    {
+        GList *next = cur->next;
+
+        Site *s2 = (Site*)cur->data;
+
+        if(s != s2)
+        {
+            /*if(g_rand_double(grand) <= r)
+            {
+                s->numLinks++;
+                s->links = g_list_prepend(s->links, s2);
+            }*/
+            
+            if(g_rand_double(grand) <= r)
+            {
+                s2->numLinks++;
+                s2->links = g_list_prepend(s2->links, s);
+            }
+        }
+
+        cur = next;
+    }
+}
+
 gboolean timer(GtkWidget *window)
 {
     g_time += g_dt/1000;
@@ -248,6 +323,10 @@ gboolean windowDelete(GtkWidget *widget, GdkEvent *event, gpointer user_data)
 
 gboolean canvasDraw(GtkWidget *widget, cairo_t *cr, gpointer user_data)
 {
+    double x1, x2, y1, y2;
+    cairo_clip_extents(cr, &x1, &y1, &x2, &y2);
+    width = fabs(x2 - x1);
+    height = fabs(y2 - y1);
     cairo_set_source_rgb(cr, 0.6, 0.6, 1);
     cairo_paint(cr);
 
@@ -296,29 +375,13 @@ gboolean keyPress(GtkWidget *widget, GdkEventKey *event, gpointer user_data)
     {
         case 's': //create site
             {
-                Site *s = (Site*)g_malloc(sizeof(Site));
-                s->pos = cursorPos;
-                s->radius = radius;
-                s->numLinks = 0;
-                s->links = NULL;
-                s->numVisitors[0] = 0;
-                s->numVisitors[1] = 0;
-                s->rank = 0;
-                sites = g_list_prepend(sites, s);
-                numSites++;
+                putSite();
             }
             break;
         case GDK_KEY_Delete: //kill selected site
             if(event->state & GDK_SHIFT_MASK)
             {
-                selSite = NULL;
-                GList *cur = sites;
-                while(cur != NULL)
-                {
-                    GList *next = cur->next;
-                    killSite(cur);
-                    cur = next;
-                }
+                killAllSites();
             }
             else
             {
@@ -377,6 +440,7 @@ gboolean keyPress(GtkWidget *widget, GdkEventKey *event, gpointer user_data)
             }
             break;
         case 'm': moving = !moving; break; //move selected site
+        case 'r': randomSite(0.5); break;
     }
     return TRUE;
 }
