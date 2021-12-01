@@ -264,10 +264,6 @@ Site* putSite()
 
 void randomSite(float r)
 {
-    GList *sel = selectSite();
-
-    if(sel != NULL) return;
-
     Site *s = putSite();
 
     GList *cur = sites;
