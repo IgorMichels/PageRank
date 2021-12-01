@@ -446,9 +446,6 @@ int main(int argc, char *argv[])
     selSite = NULL;
     moving = FALSE;
 
-    update_interval = 1;
-    p = 0.1;
-    radius = 20;
     cycle = 0;
 
     g_time = 0;
@@ -476,6 +473,10 @@ int main(int argc, char *argv[])
     radius_scale = GTK_SPIN_BUTTON(gtk_builder_get_object(builder, "radius_scale"));
 
     gtk_builder_connect_signals(builder, NULL);
+
+    valueChanged(p_scale, NULL);
+    valueChanged(interval_scale, NULL);
+    valueChanged(radius_scale, NULL);
 
     g_timeout_add(g_dt, (GSourceFunc)timer, canvas);
 
