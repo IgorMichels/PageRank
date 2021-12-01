@@ -74,7 +74,7 @@ Rapidamente o mecanismo ganhou força, virando o principal mecanismo de buscas. 
 
 Cadeias de Markov são um modelo estocástico que descreve uma sequência de eventos onde a probabilidade dos mesmos só depende do estado anterior. Esses modelos podem ser aplicados em tempo discreto ou continuo, e são usados para diversos processos como filas ou dinâmica populacional animal. Processos de Markov são a base para simulações do tipo 'Monte Carlo Markov Chain', que podem ser usados para amostrar de distribuições de probabilidade complexas, com aplicações em diversas áreas.
 
-Cadeias de Markov podem ser representadas de forma simples por uma 'matriz de transição', que descreve as probabilidades de transição de cada estado em particular para os demais possíveis estados. Com essa modelagem, torna-se fácil manipular computacionalmente o processo. Também é possível obter resultados como a chamada 'distribuição estacionária', que representa uma especie de 'equilíbrio' no processo a longo prazo, onde é conhecida a representatividade de cada estado no todo. Essas distribuições estacionárias existem se, e somente se, a Cadeia de Markov em questão é 'não periódica', o que pode ser entendido como não haver ciclos de forma a limitar as transições a múltiplos fixos de passos para cada estado.
+Cadeias de Markov podem ser representadas de forma simples por uma 'matriz de transição', que descreve as probabilidades de transição de cada estado em particular para os demais possíveis estados. Com essa modelagem, torna-se fácil manipular computacionalmente o processo. Também é possível obter resultados como a chamada 'distribuição estacionária', que representa uma especie de 'equilíbrio' no processo a longo prazo, onde é conhecida a representatividade de cada estado no todo. Se a Cadeia de Markov em questão é 'não periódica', o que pode ser entendido como não haver ciclos de forma a limitar as transições a múltiplos fixos de passos para cada estado, podemos garantir existência e unicidade da distribuição estacionária.
 
 \subsubsection*{O teorema de Perron-Frobenius}
 
@@ -90,9 +90,6 @@ O Teorema de Perron-Frobenius afirma, resumidamente, que uma matriz $d \times d$
 \end{enumerate}
 
 A prova dos itens desse teorema se dão, dentre outras abordagens, por álgebra linear. Detalhes dessa demostração não serão abordadas nesse texto por conveniência, já que se estende ao escopo do trabalho. A comprovação completa pode ser encontrada detalhadamente na seção 2 de \cite{perron-frobenius}.
-
-% escrever uma historinha aqui
-% falar que existe um estado estacionário se, e somente se, é aperiódica
 
 \section*{PageRank}
 
@@ -165,8 +162,8 @@ Para driblar esses problemas podemos fazer algumas adaptações nas redes, alter
         $n$: o número de nós da rede.
 \end{itemize}
 
-Visualmente, podemos ilustrar os grafos anteriores após as alterações como na Figura \ref{graph12}. Na rede da esquerda, as arestas azuis representam as próprias arestas, enquanto as vermelhas representam grupos de arestas que se conectam a cada uma das arestas da outra parte do grafo, representada pelo no Grafo.
-\begin{figure}
+Visualmente, podemos ilustrar os grafos anteriores após as alterações como na Figura \ref{graph12}. Na rede da esquerda, as arestas azuis representam as próprias arestas, enquanto as vermelhas representam grupos de arestas que se conectam a cada uma das arestas da outra parte do grafo, representada no Grafo.
+\begin{figure}[H]
     \centering
     \begin{tikzpicture}
         \node (A) at (0, 1.7) [node] {A};
