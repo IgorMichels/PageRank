@@ -101,10 +101,6 @@ void killAllSites()
 
 Site *pickSite(Site *src)
 {
-    if(numSites <= 1) return src;
-
-    Site *s;
-
     float r = g_rand_double(grand);
 
     if(r <= p)
