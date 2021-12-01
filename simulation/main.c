@@ -264,22 +264,11 @@ Site* putSite()
 
 void randomSite(float r)
 {
-    Pos2D cursor = cursorPos;
-
-    cursorPos = (Pos2D){
-        g_rand_double_range(grand, 0+radius, width-radius),
-        g_rand_double_range(grand, 0+radius, height-radius)};
-
     GList *sel = selectSite();
 
-    if(sel != NULL)
-    {
-        cursorPos = cursor;
-        return;
-    }
+    if(sel != NULL) return;
 
     Site *s = putSite();
-    cursorPos = cursor;
 
     GList *cur = sites;
 
